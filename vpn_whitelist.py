@@ -190,7 +190,6 @@ if __name__ == "__main__":
             if input('\nСоздать ли список доменов на основе списка IP (y|n): ').strip().lower() in ("y", "yes", "1", "д", "да"):
                 result = main(input_ip_list, 'ip', output_format, 'domain')
                 write_file(result, f'whitelist domains (ip based) for {output_format}.txt')
-        else: print(f'\n[i] Пропуск создания списка IP т.к формат {output_format} использует только домены')
 
     if input_domain_list: 
         if format["format_need_only"] != 'ip':
@@ -200,6 +199,5 @@ if __name__ == "__main__":
             if input('\nСоздать ли список IP на основе списка доменов (y|n): ').strip().lower() in ("y", "yes", "1", "д", "да"):
                 result = main(input_domain_list, 'domain', output_format, 'ip')
                 write_file(result, f'whitelist ip (domains based) for {output_format}.txt')
-        else: print(f'\n[i] Пропуск создания списка доменов т.к формат {output_format} использует только IP')
 
     print('\n[i] Завершено!')
