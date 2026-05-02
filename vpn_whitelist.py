@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот.'
+# by kompot69
+description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот. '
 import requests, socket, os
 
 FORMATS = { # "format_need_only": 'ip' | 'domain' | 'one' | False
@@ -65,12 +66,12 @@ def open_file(path_or_url): # return: list or None
     if path_or_url == '' or not path_or_url: return None
     try:
         if path_or_url.startswith('http'):
-            print(f'[i] Загрузка файла с URL {path_or_url} ... ',end="")
+            print(f'[i] Загрузка файла с URL ... ',end="")
             response = requests.get(path_or_url, timeout=30)
             response.raise_for_status()
             result = response.text
         elif path_or_url:
-            print(f'[i] Открытие файла {path_or_url} ... ',end="")
+            print(f'[i] Открытие файла ... ',end="")
             with open(path_or_url, "r", encoding="utf-8-sig") as f:
                 result = f.read()
         else: return
@@ -106,10 +107,10 @@ def ip_domain(domain=None, ip=None):
             return ip, domain
         else: return None, None
     except socket.herror as e:
-        print(f'Ошибка получения домена для IP {ip} : {e}')
+        print(f'Ошибка получения домена для IP: {e}')
         return None, None
     except socket.gaierror as e:
-        print(f'Ошибка получения IP для домена {domain} : {e}')
+        print(f'Ошибка получения IP для домена: {e}')
         return None, None
     
 def main(input_list, input_list_type, output_format, output_list_type=None):
