@@ -1,31 +1,49 @@
 #!/usr/bin/env python3
-description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот'
+description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот.'
 import requests, socket, os
 
 FORMATS = {
-    "AmneziaVPN": {
+    "AmneziaVPN (ips & domains)": {
         "separate_lists": False,
-        "file_format": "[\n{all_lines}\n]",
+        "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
-        "line_separator": ",\n"
+        "line_separator": ',\n'
     },
-    "v2rayNG": {
+    "AmneziaVPN (ips only)": {
         "separate_lists": True,
-        "file_format": "{all_lines}",
-        "line_format": "{ip_or_domain}",
-        "line_separator": ","
+        "file_format": '[\n{all_lines}\n]',
+        "line_format": '    {{ "hostname":  "", "ip": "{ip_or_domain}" }}',
+        "line_separator": ',\n'
+    },
+    "AmneziaVPN (domains only)": {
+        "separate_lists": True,
+        "file_format": '[\n{all_lines}\n]',
+        "line_format": '    {{ "hostname":  "{ip_or_domain}", "ip": "" }}',
+        "line_separator": ',\n'
+    },
+    "v2rayNG (domains only)": {
+        "separate_lists": True,
+        "file_format": '[{"domain":[{all_lines}],"enabled":true,"ip":[],"locked":false,"outboundTag":"direct","remarks":"whitelist domains"}]',
+        "line_format": '"{ip_or_domain}"',
+        "line_separator": ','
+    },
+    "v2rayNG (ips only)": {
+        "separate_lists": True,
+        "file_format": '[{"domain":[],"enabled":true,"ip":[{all_lines}],"locked":false,"outboundTag":"direct","remarks":"whitelist ips"}]',
+        "line_format": '"{ip_or_domain}"',
+        "line_separator": ','
     },
     "Happ": {
         "separate_lists": True,
-        "file_format": "{all_lines}",
-        "line_format": "{ip_or_domain}",
-        "line_separator": ","
+        "file_format": '{all_lines}',
+        "line_format": '{ip_or_domain}',
+        "line_separator": ','
     },
     "NekoBox (Windows)": {
         "separate_lists": True,
-        "file_format": "{all_lines}",
-        "line_format": "{ip_or_domain}",
-        "line_separator": "\n"
+        "file_format": '{all_lines}',
+        "line_format": '{ip_or_domain}',
+        "line_separator": '\n'
     }
 }
 
@@ -64,6 +82,7 @@ def write_file(data,filename):
 def ip_domain(domain=None, ip=None):
     try:
         if ip is not None: 
+            if not set(ip) <= set("0123456789."): return print(f'Неверный формат IP: {ip}')
             hostname, _, _ = socket.gethostbyaddr(ip)
             return ip, hostname
         elif domain is not None: 
