@@ -3,7 +3,7 @@ description = 'Скрипт для переформатирования спис
 import requests, socket, os
 
 FORMATS = {
-    "AmneziaVPN (ips & domains) (не рекомендую)": {
+    "AmneziaVPN (ips & domains)": {
         "format_need_only": False, # 'ip' | 'domain' | 'one' | False
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
