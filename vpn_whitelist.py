@@ -4,43 +4,43 @@ import requests, socket, os
 
 FORMATS = {
     "AmneziaVPN (ips & domains)": {
-        "separate_lists": False,
+        "input_need_only": False, # 'ip' | 'domain' | 'one' | False
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
         "line_separator": ',\n'
     },
     "AmneziaVPN (ips only)": {
-        "separate_lists": True,
+        "input_need_only": 'ip',
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname":  "", "ip": "{ip_or_domain}" }}',
         "line_separator": ',\n'
     },
     "AmneziaVPN (domains only)": {
-        "separate_lists": True,
+        "input_need_only": 'domain',
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname":  "{ip_or_domain}", "ip": "" }}',
         "line_separator": ',\n'
     },
     "v2rayNG (domains only)": {
-        "separate_lists": True,
+        "input_need_only": 'domain',
         "file_format": '[{"domain":[{all_lines}],"enabled":true,"ip":[],"locked":false,"outboundTag":"direct","remarks":"whitelist domains"}]',
         "line_format": '"{ip_or_domain}"',
         "line_separator": ','
     },
     "v2rayNG (ips only)": {
-        "separate_lists": True,
+        "input_need_only": 'ip',
         "file_format": '[{"domain":[],"enabled":true,"ip":[{all_lines}],"locked":false,"outboundTag":"direct","remarks":"whitelist ips"}]',
         "line_format": '"{ip_or_domain}"',
         "line_separator": ','
     },
     "Happ": {
-        "separate_lists": True,
+        "input_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '{ip_or_domain}',
         "line_separator": ','
     },
     "NekoBox (Windows)": {
-        "separate_lists": True,
+        "input_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '{ip_or_domain}',
         "line_separator": '\n'
@@ -54,7 +54,7 @@ def open_file(path_or_url): # return: list or None
     try:
         if path_or_url.startswith('http'):
             print(f'[i] Загрузка файла с URL {path_or_url} ... ',end="")
-            response = requests.get(path_or_url, timeout=1)
+            response = requests.get(path_or_url, timeout=30)
             response.raise_for_status()
             result = response.text
         elif path_or_url:
@@ -68,11 +68,13 @@ def open_file(path_or_url): # return: list or None
     except requests.exceptions.MissingSchema as e: print(f'[E] Неверный URL: {e}')
     except requests.exceptions.HTTPError as e: print(f'[E] Неверный URL: {e}')
     except requests.exceptions.ConnectionError as e: print(f'[E] Ошибка подключения к URL: {e}')
+    except requests.exceptions.ReadTimeout as e: print(f'[E] Загрузка с URL прервана по таймауту')
     
 def write_file(data,filename):
-    counter=1
+    file_name, file_ext = os.path.splitext(filename)
+    counter = 1
     while os.path.exists(filename):
-        filename = f"{filename.rsplit(".", 1)[0]} ({counter}).{filename.rsplit(".", 1)[1]}"
+        filename = f"{file_name} ({counter}){file_ext}"
         counter += 1
     print(f'[i] Запись в файл "{filename}" ... ',end="")
     with open(filename, "w") as f:
@@ -101,19 +103,15 @@ def main(input_list, input_list_type, output_format, output_list_type=None, chec
     list_total = len(input_list)
     print(f'\n[i] Исходные данные: список {input_list_type} ({list_total} строк), итоговый формат: список {output_list_type} для {output_format}')
 
-    if input_list_type == output_list_type:
-        print(f'[i] Форматирование исходных данных в формат {output_format}')
-        if check_ip_domain: 
-            print(f'[!] Проверка соотношения IP и доменов принудительно отключена, т.к. итоговый формат ({output_list_type}) совпадает с исходным ({input_list_type})')
-            check_ip_domain = False
-    else:
-        print(f'[i] Преобразование списка {input_list_type} в список {output_list_type} с форматом {output_format}')
-        if not check_ip_domain:
-            print(f'[!] Проверка соотношения IP и доменов принудительно включена, т.к. итоговый формат ({output_list_type}) отличается от исходного ({input_list_type})')
-            check_ip_domain = True
+    if (input_list_type == output_list_type) and check_ip_domain: 
+        print(f'[!] Проверка соотношения IP и доменов принудительно отключена, т.к. итоговый формат ({output_list_type}) совпадает с исходным ({input_list_type})')
+        check_ip_domain = False
+    if (input_list_type != output_list_type) and not check_ip_domain:
+        print(f'[!] Проверка соотношения IP и доменов принудительно включена, т.к. итоговый формат ({output_list_type}) отличается от исходного ({input_list_type})')
+        check_ip_domain = True
 
     format = FORMATS[output_format]
-    if not format["separate_lists"] and not check_ip_domain:
+    if not format["input_need_only"] and not check_ip_domain:
         print(f'[!] Проверка соотношения IP и доменов принудительно включена, т.к. формат {output_format} должен содержать IP и домены в одном списке')
         check_ip_domain = True
 
@@ -133,7 +131,7 @@ def main(input_list, input_list_type, output_format, output_list_type=None, chec
             if (not ip) or (not domain): 
                 errors.append(ip_or_domain)
                 continue
-            if format["separate_lists"]:
+            if not format["input_need_only"]:
                 if output_list_type == 'ip':
                     line = format["line_format"].format(ip_or_domain=ip)
                 if output_list_type == 'domains':
@@ -153,6 +151,7 @@ if __name__ == "__main__":
     print(description,'\n')
     input_ip_list = None
     input_domain_list = None
+    cross_check = False
 
     while not (input_ip_list or input_domain_list): 
         input_ip_list = open_file(input("Список IP адресов (URL|PATH|None): "))
@@ -168,20 +167,29 @@ if __name__ == "__main__":
         if output_format < 1 or output_format > len(output_formats): print("[E] Неверное значение!")
         else: output_format = output_formats[output_format - 1]
 
-    cross_check = input('\nСоздать ли список IP на основе списка доменов и/или список доменов на основе списка IP (y|n): ').strip().lower() in ("y", "yes", "1", "д", "да")
+    format = FORMATS[output_format]
+    if not format["input_need_only"]: cross_check = True
 
     if input_ip_list: 
-        result = main(input_ip_list, 'ip', output_format)
-        write_file(result, f'whitelist ip for {output_format}.txt')
-        if cross_check: 
-            result = main(input_ip_list, 'ip', output_format, 'domains')
-            write_file(result, f'whitelist domains (ip based) for {output_format}.txt')
+        if format["input_need_only"] == 'domain': print(f'\n[!] Пропуск списка IP т.к формат {output_format} использует только домены')
+        else:
+            result = main(input_ip_list, 'ip', output_format)
+            write_file(result, f'whitelist ip for {output_format}.txt')
+            if not cross_check and format["input_need_only"] == 'one': 
+                cross_check = input('\nСоздать ли список доменов на основе списка IP (y|n): ').strip().lower() in ("y", "yes", "1", "д", "да")
+            if cross_check: 
+                result = main(input_ip_list, 'ip', output_format, 'domains')
+                write_file(result, f'whitelist domains (ip based) for {output_format}.txt')
 
     if input_domain_list: 
-        result = main(input_domain_list, 'domains', output_format)
-        write_file(result, f'whitelist domains for {output_format}.txt')
-        if cross_check: 
-            result = main(input_domain_list, 'domains', output_format, 'ip')
-            write_file(result, f'whitelist ip (domains based) for {output_format}.txt')
+        if format["input_need_only"] == 'ip': print(f'\n[!] Пропуск списка доменов т.к формат {output_format} использует только IP')
+        else:
+            result = main(input_domain_list, 'domains', output_format)
+            write_file(result, f'whitelist domains for {output_format}.txt')
+            if not cross_check and format["input_need_only"] == 'one': 
+                cross_check = input('\nСоздать ли список IP на основе списка доменов (y|n): ').strip().lower() in ("y", "yes", "1", "д", "да")
+            if cross_check: 
+                result = main(input_domain_list, 'domains', output_format, 'ip')
+                write_file(result, f'whitelist ip (domains based) for {output_format}.txt')
 
-    print('[i] Завершено!')
+    print('\n[i] Завершено!')
