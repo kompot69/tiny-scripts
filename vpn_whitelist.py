@@ -3,22 +3,16 @@ description = 'Скрипт для переформатирования спис
 import requests, socket, os
 
 FORMATS = {
-    "AmneziaVPN (ips & domains)": {
+    "AmneziaVPN (ips & domains) (не рекомендую)": {
         "format_need_only": False, # 'ip' | 'domain' | 'one' | False
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
         "line_separator": ',\n'
     },
-    "AmneziaVPN (ips only)": {
-        "format_need_only": 'ip',
+    "AmneziaVPN": {
+        "format_need_only": 'one',
         "file_format": '[\n{all_lines}\n]',
-        "line_format": '    {{ "hostname":  "", "ip": "{ip}" }}',
-        "line_separator": ',\n'
-    },
-    "AmneziaVPN (domains only)": {
-        "format_need_only": 'domain',
-        "file_format": '[\n{all_lines}\n]',
-        "line_format": '    {{ "hostname":  "{domain}", "ip": "" }}',
+        "line_format": '    {{ "hostname":  "{ip_or_domain}", "ip": "" }}',
         "line_separator": ',\n'
     },
     "v2rayNG (domains only)": {
@@ -33,10 +27,10 @@ FORMATS = {
         "line_format": '"{ip}"',
         "line_separator": ','
     },
-    "Happ": {
-        "format_need_only": 'one',
+    "Happ (ips only)": {
+        "format_need_only": 'ip',
         "file_format": '{all_lines}',
-        "line_format": '{ip_or_domain}',
+        "line_format": '{ip}',
         "line_separator": ','
     },
     "NekoBox (Windows)": {
@@ -145,9 +139,9 @@ def main(input_list, input_list_type, output_format, output_list_type=None):
         if not format["format_need_only"]:
             line = format["line_format"].format(domain=domain, ip=ip)
         elif format["format_need_only"] == 'ip' or ():
-            line = format["line_format"].format(ip=ip)
+            line = format["line_format"].format(ip=(ip or ip_or_domain))
         elif format["format_need_only"] == 'domain':
-            line = format["line_format"].format(domain=domain)
+            line = format["line_format"].format(domain=(domain or ip_or_domain))
         elif format["format_need_only"] == 'one':
             if output_list_type == 'ip': line = format["line_format"].format(ip_or_domain=(ip or ip_or_domain))
             if output_list_type == 'domain':line = format["line_format"].format(ip_or_domain=(domain or ip_or_domain))
