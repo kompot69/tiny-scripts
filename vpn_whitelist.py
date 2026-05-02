@@ -2,17 +2,17 @@
 description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот.'
 import requests, socket, os
 
-FORMATS = {
-    "AmneziaVPN (ips & domains)": {
-        "format_need_only": False, # 'ip' | 'domain' | 'one' | False
-        "file_format": '[\n{all_lines}\n]',
-        "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
-        "line_separator": ',\n'
-    },
+FORMATS = { # "format_need_only": 'ip' | 'domain' | 'one' | False
     "AmneziaVPN": {
         "format_need_only": 'one',
         "file_format": '[\n{all_lines}\n]',
         "line_format": '    {{ "hostname":  "{ip_or_domain}", "ip": "" }}',
+        "line_separator": ',\n'
+    },
+    "AmneziaVPN (domains & ips)": {
+        "format_need_only": False,
+        "file_format": '[\n{all_lines}\n]',
+        "line_format": '    {{ "hostname": "{domain}", "ip": "{ip}" }}',
         "line_separator": ',\n'
     },
     "v2rayNG (domains only)": {
@@ -100,6 +100,8 @@ def ip_domain(domain=None, ip=None):
             hostname, _, _ = socket.gethostbyaddr(ip)
             return ip, hostname
         elif domain is not None: 
+            allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-.")
+            if not bool(domain) and all(c in allowed for c in domain): return ip, domain
             ip = socket.gethostbyname(domain)
             return ip, domain
         else: return None, None
