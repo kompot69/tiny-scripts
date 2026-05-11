@@ -197,6 +197,7 @@ def main(input_list, input_list_type, output_format, output_list_type=None, pars
         if ETA//60>60: ETA = f"{ETA//60//60:.0f}h{ETA//60%60:.0f}m"
         elif ETA//60>1: ETA = f"{ETA//60:.0f}m{ETA%60:.0f}s"
         else: ETA = f"{ETA%60:.0f}s"
+        
         print(f"\r{' ' * 200}\r[i] [{number}/{list_total} | {number/(list_total/100):.0f}% | ETA:{ETA}] Обработка: {ip_or_domain} ... ",end="", flush=True)
 
         if not format["format_need_only"] or input_list_type != output_list_type:
@@ -256,13 +257,15 @@ def main(input_list, input_list_type, output_format, output_list_type=None, pars
                     except Exception as e: print(f'ошибка: {str(e).replace('\n',' ')}', flush=True)
             except Exception as e: print(f" ошибка: {str(e).replace('\n',' ')}", flush=True)
 
-    ATAm = (time.time()-ATD)//60 
-    ATAs = time.time()-ATD
-    ATA = f"{ATAm:.0f} мин. {ATAs%60:.0f} сек." if ATAm>0 else f"{ATAs:.3f} сек."
     print(f"\r{' ' * 200}\r[i] Очистка повторяющихся значений ...", end="", flush=True)
     output_result = list(dict.fromkeys(output_result))
     errors = list(dict.fromkeys(errors))
     sub_errors = list(dict.fromkeys(sub_errors))
+    ATA = time.time()-ATD
+    if ATA/60/60>=60: ATA = f"{ATA//60//60:.0f} ч. {ATA//60%60:.0f} мин." 
+    elif ATA/60>=1: ATA = f"{ATA//60:.0f} мин. {ATA%60:.0f} сек." 
+    elif ATA>=10: ATA = f"{ATA:.1f} сек."
+    else: ATA = f"{ATA:.3f} сек."
     print(f"\r{' ' * 200}\r[i] Обработка списка завершена за {ATA} Итого ресурсов: {len(output_result)} ")
     if errors or sub_errors: 
         if input(f'Ошибок: {len(errors)}, ошибок вторичных доменов: {len(sub_errors)}. Сохранить список? (y|n): ').strip().lower() in ACCEPT_KEYS:
