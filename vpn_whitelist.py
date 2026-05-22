@@ -39,6 +39,13 @@ FORMATS = { # "format_need_only": 'ip' | 'domain' | 'one' | False
         "line_separator": ',',
         "file_extension": 'txt'
     },
+    "Happ (правило роутинга (список=direct))": {
+        "format_need_only": 'one',
+        "file_format": '{all_lines}\nhapp://routing/add/final,*,proxy',
+        "line_format": 'happ://routing/add/suffix,{ip_or_domain},direct',
+        "line_separator": '\n',
+        "file_extension": 'txt'
+    },
     "NekoBox (Windows)": {
         "format_need_only": 'one',
         "file_format": '{all_lines}',
