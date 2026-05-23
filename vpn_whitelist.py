@@ -3,7 +3,7 @@
 description = 'Скрипт для переформатирования списка IP/доменов в фомат для популярных VPN приложений с возможностью создания списка IP адресов на основе списка доменов и наоборот. '
 import requests, socket, os, time
 
-FORMATS = { # "format_need_only": 'ip' | 'domain' | 'one' | False
+FORMATS = { # "format_need_only":'ip'|'domain'|'one'|False , "file_extension":'format'(optional,default:'txt'), "clean_subdomains":bool(optional,default:False,make '*.domain.com' instead 'sub.domain.com')
     "AmneziaVPN": {
         "format_need_only": 'one',
         "file_format": '[\n{all_lines}\n]',
@@ -22,57 +22,50 @@ FORMATS = { # "format_need_only": 'ip' | 'domain' | 'one' | False
         "format_need_only": 'domain',
         "file_format": '[{{"domain":[{all_lines}],"enabled":true,"ip":[],"locked":false,"outboundTag":"direct","remarks":"whitelist domains"}}]',
         "line_format": '"{domain}"',
-        "line_separator": ',',
-        "file_extension": 'txt'
+        "line_separator": ','
     },
     "v2rayNG (ips only)": {
         "format_need_only": 'ip',
         "file_format": '[{{"domain":[],"enabled":true,"ip":[{all_lines}],"locked":false,"outboundTag":"direct","remarks":"whitelist ips"}}]',
         "line_format": '"{ip}"',
-        "line_separator": ',',
-        "file_extension": 'txt'
+        "line_separator": ','
     },
     "Happ (ips only)": {
         "format_need_only": 'ip',
         "file_format": '{all_lines}',
         "line_format": '{ip}',
-        "line_separator": ',',
-        "file_extension": 'txt'
+        "line_separator": ','
     },
     "Happ (правило роутинга (список=direct))": {
-        "format_need_only": 'one',
+        "format_need_only": 'domain',
         "file_format": '{all_lines}\nhapp://routing/add/final,*,proxy',
-        "line_format": 'happ://routing/add/suffix,{ip_or_domain},direct',
+        "line_format": 'happ://routing/add/suffix,{domain},direct',
         "line_separator": '\n',
-        "file_extension": 'txt'
+        "clean_subdomains": True
     },
     "NekoBox (Windows)": {
         "format_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '{ip_or_domain}',
-        "line_separator": '\n',
-        "file_extension": 'txt'
+        "line_separator": '\n'
     },
     "Простой список (через перенос строк)": {
         "format_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '{ip_or_domain}',
-        "line_separator": '\n',
-        "file_extension": 'txt'
+        "line_separator": '\n'
     },
     "Простой список (через запятую)": {
         "format_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '{ip_or_domain}',
-        "line_separator": ',',
-        "file_extension": 'txt'
+        "line_separator": ','
     },
     "Простой список (через запятую, в кавычках)": {
         "format_need_only": 'one',
         "file_format": '{all_lines}',
         "line_format": '"{ip_or_domain}"',
-        "line_separator": ',',
-        "file_extension": 'txt'
+        "line_separator": ','
     }
 }
 IP_ALLOWED_LETTERS='0123456789.'
@@ -143,6 +136,16 @@ def write_file(data, file_name, file_ext='txt'):
             print('OK', flush=True)
     except Exception as e: print(f'ошибка: {e}', flush=True)
 
+def clean_subdomains(domains):
+    res = set()
+    for d in domains:
+        d = d.lstrip("*.")
+        parts = d.split(".")
+        root = ".".join(parts[-2:]) if len(parts) >= 2 else d
+        if d == root: res.add(root)
+        else: res.add(f"*.{root}")
+    return sorted(res, key=lambda s: s[::-1])
+
 def ip_domain(domain=None, ip=None):
     try:
         if ip is not None: 
@@ -190,6 +193,16 @@ def main(input_list, input_list_type, output_format, output_list_type=None, pars
     format = FORMATS[output_format]
     if not format["format_need_only"]:
         print(f'[i] Проверка соотношения IP и доменов включена, т.к. формат {output_format} должен содержать IP и домены в одном списке', flush=True)
+    if format.get("clean_subdomains", False):
+        print(f'[i] Очистка поддоменов ...', end="", flush=True)
+        if input_list_type != 'domain' or output_list_type != 'domain': 
+            print(f'\r[!] Очистка поддоменов не выполнена, т.к. формат входных и/или выходных данных не поддерживает домены', flush=True)
+        elif parse_subdomains:
+            print(f'\r[!] Очистка поддоменов не выполнена, т.к. включен парсинг зависимотей доменов', flush=True)
+        else:
+            len_before = len(input_list)
+            input_list = clean_subdomains(input_list)
+            print(f' OK ({len_before}>{len(input_list)})', flush=True)
 
     output_result = []
     errors = []
@@ -300,6 +313,7 @@ if __name__ == "__main__":
             else: output_format = output_formats[output_format - 1]
 
         format = FORMATS[output_format]
+        format_file_extension = format.get("file_extension", "txt")
 
         if input_ip_list: 
             create_domain_list_based_on_ip = input('\nСоздать ли список доменов на основе списка IP (не рекомендуется) (y|n): ').strip().lower() in ACCEPT_KEYS
@@ -310,20 +324,20 @@ if __name__ == "__main__":
         if input_ip_list: 
             if format["format_need_only"] != 'domain':
                 result = main(input_ip_list, 'ip', output_format)
-                write_file(result, f'whitelist ip for {output_format}', format['file_extension'])
+                write_file(result, f'whitelist ip for {output_format}', format_file_extension)
             if format["format_need_only"] == 'one' or format["format_need_only"] == 'domain':
                 if create_domain_list_based_on_ip:
                     result = main(input_ip_list, 'ip', output_format, 'domain')
-                    write_file(result, f'whitelist domains (ip based) for {output_format}', format['file_extension'])
+                    write_file(result, f'whitelist domains (ip based) for {output_format}', format_file_extension)
 
         if input_domain_list: 
             if format["format_need_only"] != 'ip':
                 result = main(input_domain_list, 'domain', output_format, parse_subdomains=parse_subdomains)
-                write_file(result, f'whitelist domains for {output_format}', format['file_extension'])
+                write_file(result, f'whitelist domains for {output_format}', format_file_extension)
             if format["format_need_only"] == 'one' or format["format_need_only"] == 'ip':
                 if create_ip_list_based_on_domain:
                     result = main(input_domain_list, 'domain', output_format, 'ip', parse_subdomains=parse_subdomains)
-                    write_file(result, f'whitelist ip (domains based) for {output_format}', format['file_extension'])
+                    write_file(result, f'whitelist ip (domains based) for {output_format}', format_file_extension)
 
         print('\n[i] Завершено!')
     except KeyboardInterrupt: print('\n[!] Прервано. (KeyboardInterrupt)')
